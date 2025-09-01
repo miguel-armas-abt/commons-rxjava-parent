@@ -14,6 +14,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -26,10 +27,15 @@ class ParamValidatorTest {
     private final String id;
   }
 
-  public static class DummyParamMapper implements ParamMapper {
+  public static class DummyParamMapper implements ParamMapper<DummyParams> {
     @Override
-    public Object map(Map<String, String> params) {
-      return new DummyParams(params.get("id"));
+    public Map.Entry<DummyParams, Map<String, String>> map(Map<String, String> params) {
+      DummyParams param = new DummyParams(params.get("id"));
+
+      Map<String, String> paramMap = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+      paramMap.put("id", param.getId());
+
+      return Map.entry(param, paramMap);
     }
 
     @Override
@@ -50,8 +56,8 @@ class ParamValidatorTest {
     Map<String, String> paramsMap = Map.of("id", paramValue);
 
     // Act
-    Single<DummyParams> single = validator.validateAndGet(paramsMap, DummyParams.class);
-    TestObserver<DummyParams> to = single.test();
+    Single<Map.Entry<DummyParams, Map<String, String>>> result = validator.validateAndGet(paramsMap, DummyParams.class);
+    TestObserver<DummyParams> to = result.map(Map.Entry::getKey).test();
 
     // Assert
     to.assertComplete()
@@ -66,9 +72,8 @@ class ParamValidatorTest {
     Map<String, String> paramsMap = Map.of();
 
     // Act
-    TestObserver<DummyParams> to = validator
-        .validateAndGet(paramsMap, DummyParams.class)
-        .test();
+    Single<Map.Entry<DummyParams, Map<String, String>>> result = validator.validateAndGet(paramsMap, DummyParams.class);
+    TestObserver<DummyParams> to = result.map(Map.Entry::getKey).test();
 
     // Assert
     to.assertError(InvalidFieldException.class);
